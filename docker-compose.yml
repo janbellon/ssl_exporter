@@ -6,8 +6,11 @@ services:
         HTTP_PROXY: ${http_proxy}
         HTTPS_PROXY: ${https_proxy}
         NO_PROXY: ${no_proxy}
-        SSL_EXPORTER_CONFIG: "/config/config.yaml"
+        SSL_EXPORTER_LISTEN_HOST: 0.0.0.0
+        SSL_EXPORTER_LISTEN_PORT: 9123
+        SSL_EXPORTER_LISTEN_BEARER: changeme
+
+        SSL_EXPORTER_LOG_LEVEL: info
+        SSL_EXPORTER_CLIENT_TIMEOUT: 30
     ports:
       - "9123:9123"
-    volumes:
-      - ./config.yaml:/config/config.yaml:ro

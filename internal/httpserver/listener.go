@@ -48,7 +48,7 @@ func (l *HTTPListener) Listen() error {
 		},
 	}
 
-	slog.Info(fmt.Sprintf("Litening on %s ...", listen))
+	slog.Info(fmt.Sprintf("Listening on %s ...", listen))
 
 	err := l.server.ListenAndServe()
 	if err != nil {
