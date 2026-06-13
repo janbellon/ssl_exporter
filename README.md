@@ -64,15 +64,15 @@ log_level: info
 To scrape metrics, add these lines to your `prometheus.yml` file
 ```yaml
 - job_name: ssl-exporter
-
     metrics_path: /metrics
-
+    scrape_interval: 5m
+    scrape_timeout: 30s
     static_configs:
         - targets:
             - example.com:443
             - google.com:443
             - api.mycompany.com:8443
-
+            
     authorization:
         type: Bearer
         credentials: "changeme"
