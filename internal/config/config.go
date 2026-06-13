@@ -37,8 +37,19 @@ func Load() (*Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
-	configPath := os.Getenv("SSL_EXPORTER_CONFIG")
-	if configPath != "" {
+	for _, key := range []string{
+		"log_level",
+		"listen.host",
+		"listen.port",
+		"listen.bearer",
+		"client.timeout",
+	} {
+		if err := v.BindEnv(key); err != nil {
+			return nil, err
+		}
+	}
+
+	if configPath := os.Getenv("SSL_EXPORTER_CONFIG"); configPath != "" {
 		v.SetConfigFile(configPath)
 
 		if err := v.ReadInConfig(); err != nil {
