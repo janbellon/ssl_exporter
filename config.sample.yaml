@@ -1,0 +1,9 @@
+listen:
+  host: 127.0.0.1
+  port: 9123
+  bearer: "changeme"
+
+client:
+  timeout: 30
+
+log_level: info
