@@ -6,7 +6,7 @@ A bearer token can be configured for security needs. \
 
 ## Running SSL exporter
 SSL exporter can be runned in a docker container or as a systemd service.
-
+s
 ### Running on Docker
 Clone the repository
 ```bash
@@ -58,4 +58,28 @@ client:
   timeout: 30
 
 log_level: info
+```
+
+## Configuring prometheus
+To scrape metrics, add these lines to your `prometheus.yml` file
+```yaml
+- job_name: ssl-exporter
+
+    metrics_path: /metrics
+
+    static_configs:
+        - targets:
+            - example.com:443
+            - google.com:443
+            - api.mycompany.com:8443
+
+    relabel_configs:
+        - source_labels: [__address__]
+        target_label: __param_target
+
+        - source_labels: [__param_target]
+        target_label: instance
+
+        - target_label: __address__
+        replacement: ssl-exporter:9100  # Replace with your ssl_exporter endpoint
 ```
