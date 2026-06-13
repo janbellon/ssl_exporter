@@ -1,0 +1,13 @@
+services:
+  app:
+    build: 
+      context: .
+      args: 
+        HTTP_PROXY: ${http_proxy}
+        HTTPS_PROXY: ${https_proxy}
+        NO_PROXY: ${no_proxy}
+        SSL_EXPORTER_CONFIG: "/config/config.yaml"
+    ports:
+      - "9123:9123"
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
