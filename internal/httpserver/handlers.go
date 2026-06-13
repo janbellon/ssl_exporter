@@ -19,7 +19,7 @@ func (l *HTTPListener) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		err := CheckAuthorization(r.Header["Authorization"], l.config.Listen.Bearer)
 		if err != nil {
 			writeJSON(w, http.StatusOK, NewResponse(StatusError, fmt.Sprint(err)))
-			slog.Warn("GET /checktoken", "source_ip", r.RemoteAddr, "error", "Failed authentication")
+			slog.Warn("GET /metrics", "source_ip", r.RemoteAddr, "error", "Failed authentication")
 			return
 		}
 	}

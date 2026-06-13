@@ -73,6 +73,10 @@ To scrape metrics, add these lines to your `prometheus.yml` file
             - google.com:443
             - api.mycompany.com:8443
 
+    authorization:
+        type: Bearer
+        credentials: "changeme"
+
     relabel_configs:
         - source_labels: [__address__]
         target_label: __param_target
@@ -81,5 +85,5 @@ To scrape metrics, add these lines to your `prometheus.yml` file
         target_label: instance
 
         - target_label: __address__
-        replacement: ssl-exporter:9100  # Replace with your ssl_exporter endpoint
+        replacement: ssl-exporter:9123  # Replace with your ssl_exporter endpoint
 ```

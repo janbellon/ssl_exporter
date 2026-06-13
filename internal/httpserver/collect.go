@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -27,49 +28,86 @@ func (l *HTTPListener) CollectMetrics(targets []string) *MetricsResponse {
 		MetricsList: make([]Metric, 0),
 	}
 
-	for _, target := range targets {
-		url := "https://" + target
+	const workers = 10
 
-		slog.Info(fmt.Sprintf("Sending GET request to %s", url))
+	targetCh := make(chan string)
+	resultCh := make(chan Metric)
 
-		req, err := http.NewRequestWithContext(l.ctx, http.MethodGet, url, nil)
-		if err != nil {
-			continue
-		}
+	var wg sync.WaitGroup
 
-		resp, err := l.client.Do(req)
-		if err != nil {
-			// Errors handling
-			slog.Warn(fmt.Sprintf("Skipping target %s: %v", target, err))
-			continue
-		}
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
 
-		func() {
-			defer resp.Body.Close()
+		go func() {
+			defer wg.Done()
 
-			if resp.TLS == nil || len(resp.TLS.PeerCertificates) == 0 {
-				slog.Warn(fmt.Sprintf("Skipping target %s: no TLS certificate found", target))
-				return
+			for target := range targetCh {
+				targetMetric, err := l.checkTarget(target)
+				if err != nil {
+					slog.Warn(fmt.Sprint(err))
+					continue
+				}
+
+				resultCh <- *targetMetric
 			}
-
-			cert := resp.TLS.PeerCertificates[0]
-
-			certDomain := cert.Subject.CommonName
-			if certDomain == "" && len(cert.DNSNames) > 0 {
-				certDomain = cert.DNSNames[0]
-			}
-
-			expirationDelay := time.Until(cert.NotAfter).Seconds()
-
-			metricsResponse.MetricsList = append(metricsResponse.MetricsList, Metric{
-				Labels: map[string]string{
-					"target": target,
-					"domain": certDomain,
-				},
-				Value: fmt.Sprintf("%.0f", expirationDelay),
-			})
 		}()
 	}
 
+	go func() {
+		for _, target := range targets {
+			targetCh <- target
+		}
+
+		close(targetCh)
+	}()
+
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	for metric := range resultCh {
+		metricsResponse.MetricsList = append(metricsResponse.MetricsList, metric)
+	}
+
 	return &metricsResponse
+}
+
+func (l *HTTPListener) checkTarget(target string) (*Metric, error) {
+	url := "https://" + target
+
+	slog.Info(fmt.Sprintf("Sending GET request to %s", url))
+
+	req, err := http.NewRequestWithContext(l.ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := l.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("skipping target %s: %w", target, err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.TLS == nil || len(resp.TLS.PeerCertificates) == 0 {
+		return nil, fmt.Errorf("skipping target %s: no TLS certificate found", target)
+	}
+
+	cert := resp.TLS.PeerCertificates[0]
+
+	certDomain := cert.Subject.CommonName
+	if certDomain == "" && len(cert.DNSNames) > 0 {
+		certDomain = cert.DNSNames[0]
+	}
+
+	expirationDelay := time.Until(cert.NotAfter).Seconds()
+
+	return &Metric{
+		Labels: map[string]string{
+			"target": target,
+			"domain": certDomain,
+		},
+		Value: fmt.Sprintf("%.0f", expirationDelay),
+	}, nil
 }
