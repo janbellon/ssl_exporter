@@ -2,7 +2,7 @@
 
 SSL exporter is a simple ssl certificate expiration delay gatherer written in go. \
 The expiration delay metrics are defined in seconds and exported for Prometheus on the `/metrics` endpoint. \
-A bearer token can be configured for security needs. \
+A bearer token can be configured for security needs.
 
 ## Running SSL exporter
 SSL exporter can be runned in a docker container or as a systemd service.
@@ -72,7 +72,7 @@ To scrape metrics, add these lines to your `prometheus.yml` file
             - example.com:443
             - google.com:443
             - api.mycompany.com:8443
-            
+
     authorization:
         type: Bearer
         credentials: "changeme"
