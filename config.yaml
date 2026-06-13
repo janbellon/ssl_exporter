@@ -1,9 +1,0 @@
-listen:
-  host: 0.0.0.0
-  port: 9123
-  bearer: ""
-
-client:
-  timeout: 30
-
-log_level: info
