@@ -19,18 +19,17 @@ docker compose up -d --build
 ```
 
 ### Running as a systemd service
-Compile the ssl_exporter binary
+Download the ssl_exporter binary
 ```bash
-make build
-```
-
-Copy the systemd service file to systemd directory
-```bash
-cp ssl_exporter.service /etc/systemd/system/
+wget https://github.com/janbellon/ssl_exporter/releases/download/v0.1.0/ssl_exporter-linux-amd64
 ```
 Move the binary to bin directory
 ```bash
-mv build/ssl_exporter /usr/local/bin/
+mv ssl_exporter* /usr/local/bin/ssl_exporter
+```
+Copy the systemd service file to systemd directory
+```bash
+cp ssl_exporter.service /etc/systemd/system/
 ```
 Create a ssl_exporter user
 ```bash
