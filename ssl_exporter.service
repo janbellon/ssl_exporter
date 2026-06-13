@@ -1,0 +1,18 @@
+[Unit]
+Description=Prometheus SSL Exporter
+After=network.target
+
+[Service]
+Type=simple
+User=ssl_exporter
+Group=ssl_exporter
+ExecStart=/usr/local/bin/ssl_exporter
+WorkingDirectory=/etc/ssl_exporter
+Environment=SSL_CONFIG_FILE=/etc/ssl_exporter/config.yaml
+Restart=always
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target

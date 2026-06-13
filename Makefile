@@ -1,7 +1,7 @@
 APP=ssl_exporter
 
 build:
-	go build -o build/$(APP) .
+	go build -o build/$(APP) ./cmd/ssl_exporter
 
 run:
 	go run ./cmd/ssl_exporter

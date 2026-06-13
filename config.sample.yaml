@@ -1,9 +1,9 @@
 listen:
-  host: 127.0.0.1
-  port: 9123
-  bearer: "changeme"
+  host: 127.0.0.1   # Listening host, change to 0.0.0.0 to accept external connection
+  port: 9123        # Listening port
+  bearer: "changeme"  # Bearer token for prometheus authentication
 
 client:
-  timeout: 30
+  timeout: 30   # HTTPS SSL gathering requests timeout 
 
-log_level: info
+log_level: info # Logging level (debug, info, warn, error)
