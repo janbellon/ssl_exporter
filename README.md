@@ -3,6 +3,7 @@
 SSL exporter is a simple ssl certificate expiration delay gatherer written in go. \
 The expiration delay metrics are defined in seconds and exported for Prometheus on the `/metrics` endpoint. \
 A bearer token can be configured for security needs.
+![](panel.png)
 
 ## Running SSL exporter
 SSL exporter can be runned in a docker container or as a systemd service.
@@ -86,3 +87,7 @@ To scrape metrics, add these lines to your `prometheus.yml` file
         - target_label: __address__
         replacement: ssl-exporter:9123  # Replace with your ssl_exporter endpoint
 ```
+
+## Grafana sample dashboard
+A Grafana dashboard is available in `grafana_dashboard.json`
+Import new dashboard in Grafana and paste file's content in the json input.
