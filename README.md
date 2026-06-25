@@ -9,14 +9,18 @@ A bearer token can be configured for security needs.
 SSL exporter can be runned in a docker container or as a systemd service.
 s
 ### Running on Docker
-Clone the repository
+Install Docker
 ```bash
-git clone https://github.com/janbellon/ssl_exporter
+curl -fsSL https://get.docker.com | sh
 ```
-Edit the environment variables in `docker-compose.yml` file. \
-Start the container. (This will compile the project and run it)
+Download the docker compose file
 ```bash
-docker compose up -d --build
+wget https://github.com/janbellon/ssl_exporter/releases/download/v0.1.0/docker-compose.yml
+```
+Edit the environment variables in `docker-compose.yml`. \
+Launch the ssl_exporter container
+```bash
+docker compose up -d
 ```
 
 ### Running as a systemd service

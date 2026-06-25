@@ -1,9 +1,11 @@
 # Build
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
-
-FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
@@ -12,7 +14,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build \
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -ldflags="-s -w" \
     -o ssl_exporter ./cmd/ssl_exporter
 
