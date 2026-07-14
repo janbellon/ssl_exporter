@@ -1,6 +1,6 @@
 APP := ssl_exporter
 BUILD_DIR := build
-GO_ENTRYPOINT := ./cmd/ssl_exporter
+GO_ENTRYPOINT := .
 
 .PHONY: build clean
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -24,7 +25,7 @@ type ClientConfig struct {
 	Timeout int `mapstructure:"timeout"`
 }
 
-func Load() (*Config, error) {
+func Load(flags *pflag.FlagSet) (*Config, error) {
 	v := viper.New()
 
 	v.SetDefault("log_level", "info")
@@ -37,13 +38,15 @@ func Load() (*Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
-	for _, key := range []string{
+	keys := []string{
 		"log_level",
 		"listen.host",
 		"listen.port",
 		"listen.bearer",
 		"client.timeout",
-	} {
+	}
+
+	for _, key := range keys {
 		if err := v.BindEnv(key); err != nil {
 			return nil, err
 		}
@@ -54,6 +57,26 @@ func Load() (*Config, error) {
 
 		if err := v.ReadInConfig(); err != nil {
 			return nil, fmt.Errorf("could not read config file: %w", err)
+		}
+	}
+
+	flagMapping := map[string]string{
+		"log_level":      "log-level",
+		"listen.host":    "listen-host",
+		"listen.port":    "listen-port",
+		"listen.bearer":  "listen-bearer",
+		"client.timeout": "client-timeout",
+	}
+
+	if flags != nil {
+		for vKey, flagName := range flagMapping {
+			f := flags.Lookup(flagName)
+			if f == nil {
+				continue
+			}
+			if err := v.BindPFlag(vKey, f); err != nil {
+				return nil, fmt.Errorf("unable to bind flag %q: %w", flagName, err)
+			}
 		}
 	}
 
