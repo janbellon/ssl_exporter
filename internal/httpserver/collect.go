@@ -1,9 +1,11 @@
 package httpserver
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
-	"net/http"
+	"net"
 	"sync"
 	"time"
 )
@@ -20,18 +22,21 @@ type Metric struct {
 	Value  string
 }
 
-func (l *HTTPListener) CollectMetrics(targets []string) *MetricsResponse {
+// CollectMetrics checks every target (label value -> dial address) and
+// returns the expiration delay of their certificates. Targets are expected
+// to have been validated with parseTargets.
+func (l *HTTPListener) CollectMetrics(ctx context.Context, targets []string, addrs map[string]string) *MetricsResponse {
 	metricsResponse := MetricsResponse{
 		MetricType:  "gauge",
 		MetricName:  "ssl_expiration_delay",
 		MetricHelp:  "Delay before ssl certificate expiration",
-		MetricsList: make([]Metric, 0),
+		MetricsList: make([]Metric, 0, len(targets)),
 	}
 
 	const workers = 10
 
-	targetCh := make(chan string)
-	resultCh := make(chan Metric)
+	results := make([]*Metric, len(targets))
+	indexCh := make(chan int)
 
 	var wg sync.WaitGroup
 
@@ -41,60 +46,70 @@ func (l *HTTPListener) CollectMetrics(targets []string) *MetricsResponse {
 		go func() {
 			defer wg.Done()
 
-			for target := range targetCh {
-				targetMetric, err := l.checkTarget(target)
+			for idx := range indexCh {
+				target := targets[idx]
+				targetMetric, err := l.checkTarget(ctx, target, addrs[target])
 				if err != nil {
-					slog.Warn(fmt.Sprint(err))
+					slog.Warn("Skipping target", "target", target, "error", err.Error())
 					continue
 				}
-
-				resultCh <- *targetMetric
+				results[idx] = targetMetric
 			}
 		}()
 	}
 
-	go func() {
-		for _, target := range targets {
-			targetCh <- target
+feed:
+	for idx := range targets {
+		select {
+		case indexCh <- idx:
+		case <-ctx.Done():
+			break feed
 		}
+	}
+	close(indexCh)
+	wg.Wait()
 
-		close(targetCh)
-	}()
-
-	go func() {
-		wg.Wait()
-		close(resultCh)
-	}()
-
-	for metric := range resultCh {
-		metricsResponse.MetricsList = append(metricsResponse.MetricsList, metric)
+	for _, metric := range results {
+		if metric != nil {
+			metricsResponse.MetricsList = append(metricsResponse.MetricsList, *metric)
+		}
 	}
 
 	return &metricsResponse
 }
 
-func (l *HTTPListener) checkTarget(target string) (*Metric, error) {
-	url := "https://" + target
+// checkTarget performs a TLS handshake with the target and reads the leaf
+// certificate. No application request is sent: nothing can be redirected and
+// no response body is ever read from the target.
+func (l *HTTPListener) checkTarget(ctx context.Context, target string, addr string) (*Metric, error) {
+	slog.Debug("Checking target", "target", target, "address", addr)
 
-	slog.Info(fmt.Sprintf("Sending GET request to %s", url))
+	ctx, cancel := context.WithTimeout(ctx, l.timeout)
+	defer cancel()
 
-	req, err := http.NewRequestWithContext(l.ctx, http.MethodGet, url, nil)
+	dialer := &tls.Dialer{
+		NetDialer: &net.Dialer{},
+		Config: &tls.Config{
+			// Verification is deliberately disabled: the exporter must be
+			// able to report on expired, self-signed or otherwise invalid
+			// certificates. The connection is closed right after the
+			// handshake and no data is exchanged over it.
+			InsecureSkipVerify: true, // #nosec G402
+		},
+	}
+
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 
-	resp, err := l.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("skipping target %s: %w", target, err)
+	certs := conn.(*tls.Conn).ConnectionState().PeerCertificates
+	if len(certs) == 0 {
+		return nil, fmt.Errorf("no TLS certificate found")
 	}
 
-	defer resp.Body.Close()
-
-	if resp.TLS == nil || len(resp.TLS.PeerCertificates) == 0 {
-		return nil, fmt.Errorf("skipping target %s: no TLS certificate found", target)
-	}
-
-	cert := resp.TLS.PeerCertificates[0]
+	cert := certs[0]
 
 	certDomain := cert.Subject.CommonName
 	if certDomain == "" && len(cert.DNSNames) > 0 {

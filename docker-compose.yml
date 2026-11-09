@@ -1,13 +1,20 @@
 services:
   app:
     container_name: ssl_exporter
-    image: ghcr.io/janbellon/ssl_exporter:v0.1.0
+    image: ghcr.io/janbellon/ssl_exporter:v0.1.1
     environment:
       SSL_EXPORTER_LISTEN_HOST: 0.0.0.0
       SSL_EXPORTER_LISTEN_PORT: 9123
-      SSL_EXPORTER_LISTEN_BEARER: changeme
+      # Set a strong random token, e.g. `openssl rand -hex 32`
+      SSL_EXPORTER_LISTEN_BEARER: ${SSL_EXPORTER_LISTEN_BEARER:?set SSL_EXPORTER_LISTEN_BEARER to a strong random token}
 
       SSL_EXPORTER_LOG_LEVEL: info
       SSL_EXPORTER_CLIENT_TIMEOUT: 30
     ports:
       - "9123:9123"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

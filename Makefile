@@ -2,7 +2,7 @@ APP := ssl_exporter
 BUILD_DIR := build
 GO_ENTRYPOINT := .
 
-.PHONY: build clean
+.PHONY: build clean test
 
 build: clean \
 	linux-amd64 \
@@ -29,3 +29,6 @@ darwin-arm64:
 
 windows-amd64:
 	GOOS=windows GOARCH=amd64 go build -o $(BUILD_DIR)/$(APP)-windows-amd64.exe $(GO_ENTRYPOINT)
+test:
+	go vet ./...
+	go test -race ./...

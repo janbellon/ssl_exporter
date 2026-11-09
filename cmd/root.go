@@ -10,39 +10,51 @@ import (
 	"os/signal"
 	"ssl-exporter/internal/config"
 	"ssl-exporter/internal/httpserver"
+	"ssl-exporter/internal/logging"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 )
 
+const shutdownTimeout = 10 * time.Second
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "ssl-exporter",
-	Short: "SSL Exporter for Prometheus",
-	Long:  `A SSL certificate expiration delay exporter for Prometheus`,
+	Use:          "ssl-exporter",
+	Short:        "SSL Exporter for Prometheus",
+	Long:         `A SSL certificate expiration delay exporter for Prometheus`,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Load(cmd.Flags())
 		if err != nil {
 			return err
 		}
-		ctx := context.Background()
-		httpListener := httpserver.NewHTTPListener(cfg, ctx)
+		logging.SetupLogger(cfg.LogLevel)
 
-		stopRoutine := make(chan struct{})
+		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		defer stop()
 
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		httpListener := httpserver.NewHTTPListener(cfg)
 
-		// Run a background task to shutdown all routines
+		listenErr := make(chan error, 1)
 		go func() {
-			<-sigChan
-			slog.Info("Shutdown signal received...")
-			close(stopRoutine)
-			httpListener.Shutdown(context.Background())
+			listenErr <- httpListener.Listen()
 		}()
 
-		httpListener.Listen()
-		return nil
+		select {
+		case err := <-listenErr:
+			return err
+		case <-ctx.Done():
+		}
+
+		slog.Info("Shutdown signal received...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := httpListener.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+		return <-listenErr
 	},
 }
 
@@ -59,6 +71,6 @@ func init() {
 	rootCmd.PersistentFlags().String("listen", "", "Address to listen on")
 	rootCmd.PersistentFlags().Int("port", 0, "Port to listen on")
 	rootCmd.PersistentFlags().Int("timeout", 0, "Maximum client timeout in seconds")
-	rootCmd.PersistentFlags().String("bearer", "", "Bearer token for clients authentication")
-	rootCmd.PersistentFlags().String("log_level", "", "Logging level (info, warn, error)")
+	rootCmd.PersistentFlags().String("bearer", "", "Bearer token for clients authentication (visible in the process list: prefer SSL_EXPORTER_LISTEN_BEARER or the config file)")
+	rootCmd.PersistentFlags().String("log_level", "", "Logging level (debug, info, warn, error)")
 }

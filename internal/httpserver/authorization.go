@@ -1,23 +1,20 @@
 package httpserver
 
 import (
-	"fmt"
+	"crypto/sha256"
+	"crypto/subtle"
 	"strings"
 )
 
-func CheckAuthorization(authorization []string, bearer string) error {
-	if len(authorization) == 0 {
-		return fmt.Errorf("Missing authorization header")
+// CheckAuthorization reports whether the Authorization header value carries
+// the expected bearer token. The comparison is done in constant time (on
+// fixed-size digests, so the token length does not leak either).
+func CheckAuthorization(authorization string, bearer string) bool {
+	scheme, token, found := strings.Cut(authorization, " ")
+	if !found || !strings.EqualFold(scheme, "bearer") {
+		return false
 	}
-	parts := strings.SplitN(authorization[0], " ", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("Authorization must be of type 'bearer <token>'")
-	}
-	if strings.ToLower(parts[0]) != "bearer" {
-		return fmt.Errorf("Authorization must be a bearer token")
-	}
-	if parts[1] != bearer {
-		return fmt.Errorf("Bad token")
-	}
-	return nil
+	got := sha256.Sum256([]byte(strings.TrimSpace(token)))
+	want := sha256.Sum256([]byte(bearer))
+	return subtle.ConstantTimeCompare(got[:], want[:]) == 1
 }

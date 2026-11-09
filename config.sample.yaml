@@ -1,9 +1,9 @@
 listen:
   host: 127.0.0.1   # Listening host, change to 0.0.0.0 to accept external connection
   port: 9123        # Listening port
-  bearer: "changeme"  # Bearer token for prometheus authentication
+  bearer: "changeme"  # Bearer token for prometheus authentication. Use a strong random value (openssl rand -hex 32)
 
 client:
-  timeout: 30   # HTTPS SSL gathering requests timeout 
+  timeout: 30   # Per target TLS handshake timeout in seconds (1-300)
 
 log_level: info # Logging level (debug, info, warn, error)

@@ -15,17 +15,22 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+    -trimpath \
     -ldflags="-s -w" \
-    -o ssl_exporter ./cmd/ssl_exporter
+    -o ssl_exporter .
 
 # Runtime
-FROM alpine:latest
+FROM alpine:3.22
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates \
+    && addgroup -S ssl_exporter \
+    && adduser -S -G ssl_exporter -H -s /sbin/nologin ssl_exporter
 
 WORKDIR /app
 
 COPY --from=builder /app/ssl_exporter .
+
+USER ssl_exporter
 
 EXPOSE 9123
 
